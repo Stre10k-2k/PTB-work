@@ -63,7 +63,13 @@ async def requests_device(update, context):
 async def requests_prob(update, context):
     discr = update.message.text
     info.append(discr)
-    user = RepairRequest(update.message.chat.id, update.message.chat.username, info[0], info[1], "paths")
+
+async def request_photo(update, context):
+    await update.message.reply_text("Please show me photo of your device")
+    photo = await update.message.photo[-1].get_file()
+    photo.download_to_drive(update.message.chat.username + " " + info[0])
+
+    user = RepairRequest(update.message.chat.id, update.message.chat.username, info[0], info[1], update.message.chat.username + " " + info[0])
 
     ordersTXT = user.to_dict()
 
@@ -75,7 +81,7 @@ async def requests_prob(update, context):
 app = ApplicationBuilder().token(API).build()
 app.add_handler(ConversationHandler(
     entry_points=[CommandHandler("new_request", request)],
-    states={Ask_prob: [CallbackQueryHandler(requests_device)], 2: [MessageHandler(filters.TEXT, requests_prob)]},
+    states={Ask_prob: [CallbackQueryHandler(requests_device)], 2: [MessageHandler(filters.TEXT, requests_prob)], 3:[MessageHandler()]},
     fallbacks=["Error"]
 ))
 app.run_polling()
