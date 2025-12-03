@@ -12,6 +12,14 @@ Ask_prob = 1
 API = os.getenv("API")
 admin = os.getenv("adminID")
 
+orders = "orders"
+ordersFile = os.path.join(orders, "all_orders.txt")
+os.makedirs(orders, exist_ok = True)
+
+if not os.path.exists(ordersFile):
+    with open(ordersFile, "w", encoding="utf-8")as f:
+        f.write("All Orders Logs" + "\n\n")
+
 class RepairRequest:
     def __init__(self, user_id, username, device_type, discription, photo_paths):
         self.user_id = user_id
@@ -25,12 +33,13 @@ class RepairRequest:
 
     def is_valid(self):
         if self.device_type != "phone" or self.device_type != "laptop" or self.device_type != "tablet" or len(self.discription) < 10:
-            normal = False
+            return False
         else:
-            normal = True
+            return True
 
     def to_dict(self):
-        js = json.dumps(self)
+        listOfAll = [self.user_id, self.username, self.device_type, self.discription, self.photo_paths]
+        return json.dumps(listOfAll)
 
 async def request(update, context):
     keyboard = [
@@ -55,7 +64,12 @@ async def requests_prob(update, context):
     discr = update.message.text
     info.append(discr)
     user = RepairRequest(update.message.chat.id, update.message.chat.username, info[0], info[1], "paths")
-    user.is_valid()
+
+    ordersTXT = user.to_dict()
+
+    with open(ordersFile, "a", encoding="utf-8") as f:
+        f.write(ordersTXT)
+
     return ConversationHandler.END
 
 app = ApplicationBuilder().token(API).build()
