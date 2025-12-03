@@ -1,7 +1,11 @@
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters, ConversationHandler
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters, CallbackQueryHandler, ConversationHandler
 import os
 import json
+from dotenv import load_dotenv
+
+load_dotenv()
+
 info = []
 Ask_prob = 1
 
@@ -29,25 +33,35 @@ class RepairRequest:
         js = json.dumps(self)
 
 async def request(update, context):
-    await update.message.reply_text("Please, write your device type(laptop, phone or tablet)")
+    keyboard = [
+        [InlineKeyboardButton("Phone", callback_data="phone")],
+        [InlineKeyboardButton("Laptop", callback_data="laptop")],
+        [InlineKeyboardButton("Tablet", callback_data="tablet")]
+    ]
+    await update.message.reply_text("Please, write your device type(laptop, phone or tablet)", reply_markup = InlineKeyboardMarkup(keyboard))
     return Ask_prob
 
 async def requests_device(update, context):
-    await update.message.reply_text("Now, please write discription of your photo")
-    device = update.message.text
+    query = update.callback_query
+    await query.answer()
+
+    device = query.data
     info.append(device)
+    await query.edit_message_text("What the problem with your device?")
+    
     return 2
 
 async def requests_prob(update, context):
-    await update.message.reply_text("OK. We will look at your problem and answer you later")
     discr = update.message.text
     info.append(discr)
+    user = RepairRequest(update.message.chat.id, update.message.chat.username, info[0], info[1], "paths")
+    user.is_valid()
     return ConversationHandler.END
 
 app = ApplicationBuilder().token(API).build()
 app.add_handler(ConversationHandler(
     entry_points=[CommandHandler("new_request", request)],
-    states={Ask_prob: [MessageHandler(filters.TEXT, requests_device)], 2: [MessageHandler(filters.TEXT, requests_prob)]},
+    states={Ask_prob: [CallbackQueryHandler(requests_device)], 2: [MessageHandler(filters.TEXT, requests_prob)]},
     fallbacks=["Error"]
 ))
 app.run_polling()
