@@ -111,7 +111,18 @@ async def operator_data(update, cntext):
 
         await query.edit_message_text(data)
     
-    return ConversationHandler.END
+    if query.data == "f":
+        async def begin(update, context):
+            await query.edit_message_text("Choose one filter(phone, laptop, tablet)",)
+ 
+            return 1
+        
+async def f_data(update, context):
+    for i in range(0, len(RepairRequest) - 1):
+        if RepairRequest[i].device_type == update.message.text:
+            update.message.reply_text(RepairRequest[i])
+
+            print(RepairRequest)
 
 app = ApplicationBuilder().token(API).build()
 app.add_handler(ConversationHandler(
@@ -119,9 +130,10 @@ app.add_handler(ConversationHandler(
     states={1: [CallbackQueryHandler(requests_device)], 2: [MessageHandler(filters.TEXT, requests_prob)], 3:[MessageHandler(filters.PHOTO, request_photo)]},
     fallbacks=["Error"]
 ))
+app.add_handler(CommandHandler("operator", operator))
 app.add_handler(ConversationHandler(
-    entry_points=[CommandHandler("operator", operator)],
-    states={1: [CallbackQueryHandler(operator_data)]},
-    fallbacks = ["Error"]
+    entry_points=[CallbackQueryHandler(operator_data)],
+    states = {1: (MessageHandler[filters.TEXT, f_data])},
+    fallbacks=["Error"]
 ))
 app.run_polling()
