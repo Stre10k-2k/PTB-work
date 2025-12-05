@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 info = []
-Ask_prob = 1
 
 API = os.getenv("API")
 admin = os.getenv("adminID")
@@ -32,7 +31,7 @@ class RepairRequest:
         pass
 
     def is_valid(self):
-        if self.device_type != "phone" or self.device_type != "laptop" or self.device_type != "tablet" or len(self.discription) < 10:
+        if len(self.discription) < 10:
             return False
         else:
             return True
@@ -48,7 +47,7 @@ async def request(update, context):
         [InlineKeyboardButton("Tablet", callback_data="tablet")]
     ]
     await update.message.reply_text("Please, write your device type(laptop, phone or tablet)", reply_markup = InlineKeyboardMarkup(keyboard))
-    return Ask_prob
+    return 1
 
 async def requests_device(update, context):
     query = update.callback_query
@@ -61,27 +60,68 @@ async def requests_device(update, context):
     return 2
 
 async def requests_prob(update, context):
+    await update.message.reply_text("Please show me photo of your device")
     discr = update.message.text
     info.append(discr)
 
+    return 3
+
 async def request_photo(update, context):
-    await update.message.reply_text("Please show me photo of your device")
     photo = await update.message.photo[-1].get_file()
-    photo.download_to_drive(update.message.chat.username + " " + info[0])
+    await photo.download_to_drive(f"{update.message.chat.id}.jpg")
 
     user = RepairRequest(update.message.chat.id, update.message.chat.username, info[0], info[1], update.message.chat.username + " " + info[0])
 
-    ordersTXT = user.to_dict()
+    if user.is_valid():
+        await update.message.reply_text("OK, your orders is teked")
 
-    with open(ordersFile, "a", encoding="utf-8") as f:
-        f.write(ordersTXT)
+        ordersTXT = user.to_dict() + "\n\n"
 
+        with open(ordersFile, "a", encoding="utf-8") as f:
+            f.write(ordersTXT)
+
+        return ConversationHandler.END
+    else:
+        await update.message.reply_text("There is a problem with your data")
+
+        return ConversationHandler.END
+    
+async def operator(update, context):
+    keypoard = [
+        [InlineKeyboardButton("All orders", callback_data="ao")],
+        [InlineKeyboardButton("Filter by device types", callback_data="f")],
+        [InlineKeyboardButton("Orders with photos", callback_data="owp")],
+        [InlineKeyboardButton("Statistic", callback_data="s")]
+    ]
+
+    await update.message.reply_text(
+        "Here is Admon panel",
+        reply_markup = InlineKeyboardMarkup(keypoard)
+        )
+    
+    return 1
+
+async def operator_data(update, cntext):
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "ao":
+        with open("orders/all_orders.txt", "r", encoding="utf-8") as f:
+            data = f.read()
+
+        await query.edit_message_text(data)
+    
     return ConversationHandler.END
 
 app = ApplicationBuilder().token(API).build()
 app.add_handler(ConversationHandler(
     entry_points=[CommandHandler("new_request", request)],
-    states={Ask_prob: [CallbackQueryHandler(requests_device)], 2: [MessageHandler(filters.TEXT, requests_prob)], 3:[MessageHandler()]},
+    states={1: [CallbackQueryHandler(requests_device)], 2: [MessageHandler(filters.TEXT, requests_prob)], 3:[MessageHandler(filters.PHOTO, request_photo)]},
     fallbacks=["Error"]
+))
+app.add_handler(ConversationHandler(
+    entry_points=[CommandHandler("operator", operator)],
+    states={1: [CallbackQueryHandler(operator_data)]},
+    fallbacks = ["Error"]
 ))
 app.run_polling()
