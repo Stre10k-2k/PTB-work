@@ -4,9 +4,9 @@ import os
 import json
 from dotenv import load_dotenv
 
-load_dotenv()
-
 info = []
+
+load_dotenv()
 
 API = os.getenv("API")
 admin = os.getenv("adminID")
@@ -54,7 +54,7 @@ async def requests_device(update, context):
     await query.answer()
 
     device = query.data
-    info.append(device)
+    info.append(query.data)
     await query.edit_message_text("What the problem with your device?")
     
     return 2
@@ -62,7 +62,7 @@ async def requests_device(update, context):
 async def requests_prob(update, context):
     await update.message.reply_text("Please show me photo of your device")
     discr = update.message.text
-    info.append(discr)
+    info.append(update.message.text)
 
     return 3
 
@@ -70,21 +70,28 @@ async def request_photo(update, context):
     photo = await update.message.photo[-1].get_file()
     await photo.download_to_drive(f"{update.message.chat.id}.jpg")
 
-    user = RepairRequest(update.message.chat.id, update.message.chat.username, info[0], info[1], update.message.chat.username + " " + info[0])
+    user = RepairRequest(update.message.chat.id, update.message.chat.username, info[0], info[1], str(update.message.chat.id))
 
-    if user.is_valid():
-        await update.message.reply_text("OK, your orders is teked")
+    await update.message.reply_text("OK, your orders is teked")
 
-        ordersTXT = user.to_dict() + "\n\n"
+    ordersTXT = user.to_dict() + "\n\n"
 
-        with open(ordersFile, "a", encoding="utf-8") as f:
-            f.write(ordersTXT)
+    with open(ordersFile, "a", encoding="utf-8") as f:
+        f.write(ordersTXT)
 
-        return ConversationHandler.END
-    else:
-        await update.message.reply_text("There is a problem with your data")
+    return ConversationHandler.END
 
-        return ConversationHandler.END
+async def nophoto_request(update, context):
+    await update.message.reply_text("OK, your orders is teked")
+
+    user = RepairRequest(update.message.chat.id, update.message.chat.username, info[0], info[1], "There is no photo")
+
+    ordersTXT = user.to_dict() + "\n\n"
+
+    with open(ordersFile, "a", encoding="utf-8") as f:
+        f.write(ordersTXT)
+
+    return ConversationHandler.END
     
 async def operator(update, context):
     keypoard = [
@@ -98,8 +105,6 @@ async def operator(update, context):
         "Here is Admon panel",
         reply_markup = InlineKeyboardMarkup(keypoard)
         )
-    
-    return 1
 
 async def operator_data(update, cntext):
     query = update.callback_query
@@ -110,19 +115,89 @@ async def operator_data(update, cntext):
             data = f.read()
 
         await query.edit_message_text(data)
-    
+
     if query.data == "f":
-        async def begin(update, context):
-            await query.edit_message_text("Choose one filter(phone, laptop, tablet)",)
- 
-            return 1
+        keyboard = [
+            [InlineKeyboardButton("Phone", callback_data="phone")],
+            [InlineKeyboardButton("Laptop", callback_data="laptop")],
+            [InlineKeyboardButton("Tablet", callback_data="tablet")]
+        ]
+
+        await query.edit_message_text(
+            "Choose one filter(phone, laptop, tablet)",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+    
+        return 1
+
+    if query.data == "owp":
+        with open("orders/all_orders.txt", "r", encoding="utf-8") as f:
+            data = f.read()
+
+        jdata = data.split("\n")[2:-2]
+        b = 0
+
+        for i in range(0, len(jdata), 2):
+            rdata = str(jdata[i]).split(",")
+            if rdata[-1][1:-1] == f'"{str(query.message.chat.id)}"':
+                await query.message.reply_text(jdata[i])
+                b+=1
+
+            if b == 0:
+                await query.edit_message_text(f"There isn't any orders with photo")
+
+    if query.data == "s":
+        with open("orders/all_orders.txt", "r", encoding="utf-8") as f:
+            data = f.read()
+
+        jdata = data.split("\n")[2:-2]
+        lenght = len(jdata) - len(jdata) // 2
+        phones = 0
+        laptops = 0
+        tablets = 0
+        b = 0
+        x = 0
+        for i in range(0, len(jdata), 2):
+            rdata = str(jdata[i]).split(",")
+            if rdata[2][1:] == '"phone"':
+                phones+=1
+            if rdata[2][1:] == '"laptop"':
+                phones+=1
+            if rdata[2][1:] == '"tablet"':
+                phones+=1
+
+            if rdata[-1][1:-1] == f'"{str(query.message.chat.id)}"':
+                b+=1
+
+            x = x + len(rdata[3][2:-1])
+
+        arith = x // lenght
+        procent = b * 100 / lenght
+        devices = f"phones: {phones}, laptops: {laptops}, tablets: {tablets}"
+
+        await query.edit_message_text(f"There is {lenght} orders, {procent}% of orders with photos and {devices}")
+        
         
 async def f_data(update, context):
-    for i in range(0, len(RepairRequest) - 1):
-        if RepairRequest[i].device_type == update.message.text:
-            update.message.reply_text(RepairRequest[i])
+    query = update.callback_query
+    await query.answer()
 
-            print(RepairRequest)
+    with open("orders/all_orders.txt", "r", encoding="utf-8") as f:
+        data = f.read()
+
+    jdata = data.split("\n")[2:-2]
+    a = 0
+
+    for i in range(0, len(jdata), 2):
+        rdata = str(jdata[i]).split(",")
+        if rdata[2][1:] == f'"{query.data}"':
+            await query.message.reply_text(jdata[i])
+            a+=1
+
+    if a == 0:
+        await query.edit_message_text(f"There isn't any {query.data}")
+
+    return ConversationHandler.END
 
 app = ApplicationBuilder().token(API).build()
 app.add_handler(ConversationHandler(
@@ -133,7 +208,7 @@ app.add_handler(ConversationHandler(
 app.add_handler(CommandHandler("operator", operator))
 app.add_handler(ConversationHandler(
     entry_points=[CallbackQueryHandler(operator_data)],
-    states = {1: (MessageHandler[filters.TEXT, f_data])},
+    states={1: [CallbackQueryHandler(f_data)]},
     fallbacks=["Error"]
 ))
 app.run_polling()
