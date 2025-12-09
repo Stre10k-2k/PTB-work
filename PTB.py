@@ -5,6 +5,8 @@ import json
 from dotenv import load_dotenv
 
 info = []
+device = ""
+discr = ""
 
 load_dotenv()
 
@@ -54,7 +56,7 @@ async def requests_device(update, context):
     await query.answer()
 
     device = query.data
-    info.append(query.data)
+    info.append(device)
     await query.edit_message_text("What the problem with your device?")
     
     return 2
@@ -62,36 +64,56 @@ async def requests_device(update, context):
 async def requests_prob(update, context):
     await update.message.reply_text("Please show me photo of your device")
     discr = update.message.text
-    info.append(update.message.text)
+    info.append(discr)
 
     return 3
 
 async def request_photo(update, context):
-    photo = await update.message.photo[-1].get_file()
-    await photo.download_to_drive(f"{update.message.chat.id}.jpg")
+    if update.message.photo:
+        photo = await update.message.photo[-1].get_file()
+        await photo.download_to_drive(f"{update.message.chat.id}.jpg")
 
-    user = RepairRequest(update.message.chat.id, update.message.chat.username, info[0], info[1], str(update.message.chat.id))
+        user = RepairRequest(update.message.chat.id, update.message.chat.username, info[0], info[1], str(update.message.chat.id))
 
-    await update.message.reply_text("OK, your orders is teked")
+        if user.is_valid:
+            await update.message.reply_text("OK, your orders is teked")
 
-    ordersTXT = user.to_dict() + "\n\n"
+            ordersTXT = user.to_dict() + "\n\n"
 
-    with open(ordersFile, "a", encoding="utf-8") as f:
-        f.write(ordersTXT)
+            with open(ordersFile, "a", encoding="utf-8") as f:
+                f.write(ordersTXT)
+        else:
+            await update.message.reply_text("Ooops... Your discription must include 10 simbols at least")
 
-    return ConversationHandler.END
+        info.pop(0)
+        info.pop(0)
 
-async def nophoto_request(update, context):
-    await update.message.reply_text("OK, your orders is teked")
+        return ConversationHandler.END
+    elif update.message.text:
+        await update.message.reply_text("OK, your orders is teked")
 
-    user = RepairRequest(update.message.chat.id, update.message.chat.username, info[0], info[1], "There is no photo")
+        user = RepairRequest(update.message.chat.id, update.message.chat.username, info[0], info[1], "There is no photo")
 
-    ordersTXT = user.to_dict() + "\n\n"
+        ordersTXT = user.to_dict() + "\n\n"
 
-    with open(ordersFile, "a", encoding="utf-8") as f:
-        f.write(ordersTXT)
+        with open(ordersFile, "a", encoding="utf-8") as f:
+            f.write(ordersTXT)
 
-    return ConversationHandler.END
+        if user.is_valid:
+            await update.message.reply_text("OK, your orders is teked")
+
+            ordersTXT = user.to_dict() + "\n\n"
+
+            with open(ordersFile, "a", encoding="utf-8") as f:
+                f.write(ordersTXT)
+        else:
+            await update.message.reply_text("Ooops... Your discription must include 10 simbols at least")
+
+        info.pop(0)
+        info.pop(0)
+
+        return ConversationHandler.END
+
     
 async def operator(update, context):
     keypoard = [
@@ -202,7 +224,7 @@ async def f_data(update, context):
 app = ApplicationBuilder().token(API).build()
 app.add_handler(ConversationHandler(
     entry_points=[CommandHandler("new_request", request)],
-    states={1: [CallbackQueryHandler(requests_device)], 2: [MessageHandler(filters.TEXT, requests_prob)], 3:[MessageHandler(filters.PHOTO, request_photo)]},
+    states={1: [CallbackQueryHandler(requests_device)], 2: [MessageHandler(filters.TEXT, requests_prob)], 3:[MessageHandler(filters.ALL, request_photo)]},
     fallbacks=["Error"]
 ))
 app.add_handler(CommandHandler("operator", operator))
