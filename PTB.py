@@ -85,19 +85,8 @@ async def request_photo(update, context):
         else:
             await update.message.reply_text("Ooops... Your discription must include 10 simbols at least")
 
-        info.pop(0)
-        info.pop(0)
-
-        return ConversationHandler.END
     elif update.message.text:
-        await update.message.reply_text("OK, your orders is teked")
-
         user = RepairRequest(update.message.chat.id, update.message.chat.username, info[0], info[1], "There is no photo")
-
-        ordersTXT = user.to_dict() + "\n\n"
-
-        with open(ordersFile, "a", encoding="utf-8") as f:
-            f.write(ordersTXT)
 
         if user.is_valid:
             await update.message.reply_text("OK, your orders is teked")
@@ -109,24 +98,38 @@ async def request_photo(update, context):
         else:
             await update.message.reply_text("Ooops... Your discription must include 10 simbols at least")
 
-        info.pop(0)
-        info.pop(0)
+    info.pop(0)
+    info.pop(0)
 
-        return ConversationHandler.END
+    return ConversationHandler.END
 
     
 async def operator(update, context):
-    keypoard = [
-        [InlineKeyboardButton("All orders", callback_data="ao")],
-        [InlineKeyboardButton("Filter by device types", callback_data="f")],
-        [InlineKeyboardButton("Orders with photos", callback_data="owp")],
-        [InlineKeyboardButton("Statistic", callback_data="s")]
-    ]
+    await update.message.reply_text("Please, enter password to enter admin panel")
 
-    await update.message.reply_text(
-        "Here is Admon panel",
-        reply_markup = InlineKeyboardMarkup(keypoard)
+    return 1
+    
+    
+async def get_psw(update, context):
+    if update.message.text == "12093487":
+        keypoard = [
+            [InlineKeyboardButton("All orders", callback_data="ao")],
+            [InlineKeyboardButton("Filter by device types", callback_data="f")],
+            [InlineKeyboardButton("Orders with photos", callback_data="owp")],
+            [InlineKeyboardButton("Statistic", callback_data="s")]
+        ]
+
+        await update.message.reply_text(
+            "Here is Admon panel",
+            reply_markup = InlineKeyboardMarkup(keypoard)
         )
+
+        return ConversationHandler.END
+
+    else:
+        await update.message.reply_text("Sorry, but it is incorrect password")
+
+        return ConversationHandler.END
 
 async def operator_data(update, cntext):
     query = update.callback_query
@@ -137,6 +140,19 @@ async def operator_data(update, cntext):
             data = f.read()
 
         await query.edit_message_text(data)
+
+        jdata = data.split("\n")[2:-2]
+
+        for i in range(0, len(jdata), 2):
+            rdata = str(jdata[i]).split(",")
+            try:
+                with open(f"{rdata[-1][2:-2]}.jpg", "rb") as f:
+                    await query.message.reply_photo(f)
+
+                await query.message.reply_text(rdata[-1][2:-2])
+            except:
+                pass
+
 
     if query.data == "f":
         keyboard = [
@@ -227,7 +243,11 @@ app.add_handler(ConversationHandler(
     states={1: [CallbackQueryHandler(requests_device)], 2: [MessageHandler(filters.TEXT, requests_prob)], 3:[MessageHandler(filters.ALL, request_photo)]},
     fallbacks=["Error"]
 ))
-app.add_handler(CommandHandler("operator", operator))
+app.add_handler(ConversationHandler(
+    entry_points=[CommandHandler("operator", operator)],
+    states={1: [MessageHandler(filters.TEXT, get_psw)]},
+    fallbacks=["Error"]
+))
 app.add_handler(ConversationHandler(
     entry_points=[CallbackQueryHandler(operator_data)],
     states={1: [CallbackQueryHandler(f_data)]},
