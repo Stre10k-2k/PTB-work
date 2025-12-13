@@ -116,7 +116,7 @@ async def get_psw(update, context):
             [InlineKeyboardButton("All orders", callback_data="ao")],
             [InlineKeyboardButton("Filter by device types", callback_data="f")],
             [InlineKeyboardButton("Orders with photos", callback_data="owp")],
-            [InlineKeyboardButton("Statistic", callback_data="s")]
+            [InlineKeyboardButton("Statistic", callback_data="s")],
         ]
 
         await update.message.reply_text(
@@ -215,7 +215,8 @@ async def operator_data(update, cntext):
 
         await query.edit_message_text(f"There is {lenght} orders, {procent}% of orders with photos and {devices}")
         
-        
+async def r_data(update, context)        
+
 async def f_data(update, context):
     query = update.callback_query
     await query.answer()
