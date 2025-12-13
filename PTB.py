@@ -214,8 +214,6 @@ async def operator_data(update, cntext):
         devices = f"phones: {phones}, laptops: {laptops}, tablets: {tablets}"
 
         await query.edit_message_text(f"There is {lenght} orders, {procent}% of orders with photos and {devices}")
-        
-async def r_data(update, context)        
 
 async def f_data(update, context):
     query = update.callback_query
