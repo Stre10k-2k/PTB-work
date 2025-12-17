@@ -117,6 +117,7 @@ async def get_psw(update, context):
             [InlineKeyboardButton("Filter by device types", callback_data="f")],
             [InlineKeyboardButton("Orders with photos", callback_data="owp")],
             [InlineKeyboardButton("Statistic", callback_data="s")],
+            [InlineKeyboardButton("Images", callback_data="i")]
         ]
 
         await update.message.reply_text(
@@ -214,6 +215,31 @@ async def operator_data(update, cntext):
         devices = f"phones: {phones}, laptops: {laptops}, tablets: {tablets}"
 
         await query.edit_message_text(f"There is {lenght} orders, {procent}% of orders with photos and {devices}")
+    
+    if query.data == "i":
+        with open("orders/all_orders.TXT", "r") as f:
+            data = f.read()
+
+        jdata = data.split("\n")[2:-2]
+        b = 0
+
+        for i in range(0, len(jdata), 2):
+            rdata = str(jdata[i]).split(",")
+            try:
+                with open(f"{rdata[-1][2:-2]}.jpg", "rb") as f:
+                    await query.message.reply_photo(f)
+
+                await query.message.reply_text(rdata[-1][2:-2])
+
+                b+=1
+            except:
+                pass
+
+        if b == 0:
+            await query.edit_message_text("There isn't any orders with photo")
+
+        
+
 
 async def f_data(update, context):
     query = update.callback_query
